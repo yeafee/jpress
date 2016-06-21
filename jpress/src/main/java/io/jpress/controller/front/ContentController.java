@@ -21,6 +21,8 @@ import java.util.List;
 import com.jfinal.plugin.activerecord.Page;
 
 import io.jpress.Consts;
+import io.jpress.core.Jpress;
+import io.jpress.core.addon.HookInvoker;
 import io.jpress.core.cache.ActionCache;
 import io.jpress.model.Comment;
 import io.jpress.model.Content;
@@ -41,7 +43,15 @@ public class ContentController extends BaseFrontController {
 
 	@ActionCache
 	public void index() {
+		try {
+			onRenderBefore();
+			doRender();
+		} finally {
+			onRenderAfter();
+		}
+	}
 
+	private void doRender() {
 		initRequest();
 
 		Content content = queryContent();
@@ -49,9 +59,13 @@ public class ContentController extends BaseFrontController {
 			renderError(404);
 			return;
 		}
+		
+		if(Jpress.currentTemplate().getModuleByName(content.getModule()) == null){
+			renderError(404);
+			return;
+		}
 
 		updateContentViewCount(content);
-		
 		setGlobleAttrs(content);
 
 		setAttr("pageNumber", pageNumber);
@@ -60,14 +74,14 @@ public class ContentController extends BaseFrontController {
 
 		Page<Comment> page = Comment.DAO.doPaginateByContentId(pageNumber, pageSize, content.getId());
 		setAttr("page", page);
-		
-		ContentPaginateTag cpt = new ContentPaginateTag(page,content);
+
+		ContentPaginateTag cpt = new ContentPaginateTag(page, content);
 		setAttr("pagination", cpt);
-		
+
 		List<Taxonomy> taxonomys = Taxonomy.DAO.findListByContentId(content.getId());
 		setAttr("taxonomys", taxonomys);
-		
-		setAttr("jp_menu", new MenuTag(taxonomys));
+
+		setAttr("jp_menu", new MenuTag(getRequest(),taxonomys));
 
 		render(String.format("content_%s_%s.html", content.getModule(), content.getStyle()));
 	}
@@ -76,15 +90,28 @@ public class ContentController extends BaseFrontController {
 		long visitorCount = VisitorCounter.getVisitorCount(content.getId());
 		Long viewCount = content.getViewCount() == null ? visitorCount : content.getViewCount() + visitorCount;
 		content.setViewCount(viewCount);
-		if(content.update()){
+		if (content.update()) {
 			VisitorCounter.clearVisitorCount(content.getId());
 		}
 	}
 
 	private void setGlobleAttrs(Content content) {
+		
 		setAttr(Consts.ATTR_GLOBAL_WEB_TITLE, content.getTitle());
-		setAttr(Consts.ATTR_GLOBAL_META_KEYWORDS, content.getMetaKeywords());
-		setAttr(Consts.ATTR_GLOBAL_META_DESCRIPTION, content.getMetaDescription());
+		
+		if(StringUtils.isNotBlank(content.getMetaKeywords())){
+			setAttr(Consts.ATTR_GLOBAL_META_KEYWORDS, content.getMetaKeywords());
+		}else{
+			setAttr(Consts.ATTR_GLOBAL_META_KEYWORDS, content.getTaxonomyAsString(null));
+		}
+		
+		
+		if(StringUtils.isNotBlank(content.getMetaDescription())){
+			setAttr(Consts.ATTR_GLOBAL_META_DESCRIPTION, content.getMetaDescription());
+		}else{
+			setAttr(Consts.ATTR_GLOBAL_META_DESCRIPTION, content.getSummary());
+		}
+		
 	}
 
 	private Content queryContent() {
@@ -108,10 +135,24 @@ public class ContentController extends BaseFrontController {
 		} else {
 			id = getParaToBigInteger("id");
 			slug = getPara("slug");
+
+			if (id == null && slug == null) {
+				renderError(404);
+				return;
+			}
+
 			pageNumber = getParaToInt("pageNumber", 1);
 			pageSize = getParaToInt("pageSize", 10);
 		}
 
+	}
+
+	private void onRenderBefore() {
+		HookInvoker.contentRenderBefore(this);
+	}
+
+	private void onRenderAfter() {
+		HookInvoker.contentRenderAfter(this);
 	}
 
 }

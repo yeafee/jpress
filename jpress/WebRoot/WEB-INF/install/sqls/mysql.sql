@@ -199,16 +199,18 @@ DROP TABLE IF EXISTS `{table_prefix}user`;
 
 CREATE TABLE `{table_prefix}user` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `username` varchar(64) DEFAULT NULL,
-  `password` varchar(64) DEFAULT NULL,
+  `username` varchar(128) DEFAULT NULL,
+  `password` varchar(128) DEFAULT NULL,
   `salt` varchar(32) DEFAULT NULL,
   `email` varchar(64) DEFAULT NULL,
   `phone` varchar(32) DEFAULT NULL,
-  `nickname` varchar(64) DEFAULT NULL,
+  `nickname` varchar(128) DEFAULT NULL,
   `amount` decimal(10,2) unsigned DEFAULT '0.00',
   `gender` varchar(16) DEFAULT NULL,
   `role` varchar(32) DEFAULT 'visitor',
   `signature` varchar(2048) DEFAULT NULL,
+  `content_count` int(11) unsigned DEFAULT '0',
+  `comment_count` int(11) unsigned DEFAULT '0',
   `qq` varchar(16) DEFAULT NULL,
   `wechat` varchar(32) DEFAULT NULL,
   `weibo` varchar(64) DEFAULT NULL,
@@ -223,5 +225,7 @@ CREATE TABLE `{table_prefix}user` (
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `cell_number` (`phone`),
   KEY `status` (`status`),
-  KEY `created` (`created`)
+  KEY `created` (`created`),
+  KEY `content_count` (`content_count`),
+  KEY `comment_count` (`comment_count`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

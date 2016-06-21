@@ -38,25 +38,28 @@ public class CommentController extends BaseFrontController {
 	}
 
 	public void submit() {
+
 		String gotoUrl = getPara("goto");
 		if (gotoUrl == null) {
 			gotoUrl = getRequest().getHeader("Referer");
 		}
-		
+
 		String anchor = getPara("anchor");
-		if(gotoUrl != null && anchor!=null ){
-			gotoUrl += "#"+anchor;
+		if (gotoUrl != null && anchor != null) {
+			gotoUrl += "#" + anchor;
 		}
-		
+
 		BigInteger userId = StringUtils.toBigInteger(CookieUtils.get(this, Consts.COOKIE_LOGINED_USER), null);
 
-		// 必须登录
-		Boolean comment_must_logined = Option.findValueAsBool("comment_must_logined");
-		if (comment_must_logined != null && comment_must_logined) {
+		// 允许未登陆用户评论
+		Boolean comment_allow_not_login = Option.findValueAsBool("comment_allow_not_login");
+
+		// 允许未登陆用户评论
+		if (comment_allow_not_login == null || comment_allow_not_login == false) {
 			if (userId == null) {
 				String redirect = Consts.ROUTER_USER_LOGIN;
-				if(StringUtils.isNotBlank(gotoUrl)){
-					redirect += "?goto="+StringUtils.urlEncode(gotoUrl);
+				if (StringUtils.isNotBlank(gotoUrl)) {
+					redirect += "?goto=" + StringUtils.urlEncode(gotoUrl);
 				}
 				redirect(redirect);
 				return;
@@ -74,16 +77,17 @@ public class CommentController extends BaseFrontController {
 		if (contentId != null) {
 			content = Content.DAO.findById(contentId);
 		} else {
-			if (isAjaxRequest()) {
-				renderAjaxResultForError("content id is null!");
-			} else {
-				renderText("comment fail,content id is null!");
-			}
+			renderForCommentError("comment fail,content id is null!", 1);
+			return;
+		}
+
+		String text = getPara("text");
+		if (!StringUtils.isNotBlank(text)) {
+			renderForCommentError("comment fail,text is blank!", 2);
 			return;
 		}
 
 		String author = getPara("author");
-		String text = getPara("text");
 		String email = getPara("email");
 
 		String ip = getIPAddress();
@@ -99,8 +103,14 @@ public class CommentController extends BaseFrontController {
 			}
 		}
 
+		if (!StringUtils.isNotBlank(author)) {
+			String defautAuthor = Option.findValue("comment_default_nickname");
+			author = StringUtils.isNotBlank(defautAuthor) ? defautAuthor : "网友";
+		}
+
 		final Comment comment = new Comment();
 		comment.setContentModule(content.getModule());
+		comment.setType(Comment.TYPE_COMMENT);
 		comment.setContentId(content.getId());
 		comment.setText(text);
 		comment.setIp(ip);
@@ -111,22 +121,31 @@ public class CommentController extends BaseFrontController {
 		comment.setStatus(status);
 		comment.setUserId(userId);
 		comment.setCreated(new Date());
-		
-		if(comment.save()){
+
+		if (comment.save()) {
 			MessageKit.sendMessage(Actions.COMMENT_ADD, comment);
 		}
-		
+
 		if (isAjaxRequest()) {
 			renderAjaxResultForSuccess();
 		} else {
 			if (gotoUrl != null) {
 				redirect(gotoUrl);
-			}else{
+			} else {
 				renderText("comment ok");
 			}
 		}
-		
+
 		ActionCacheManager.clearCache();
+	}
+
+	private void renderForCommentError(String message, int errorCode) {
+		String referer = getRequest().getHeader("Referer");
+		if (isAjaxRequest()) {
+			renderAjaxResult(message, errorCode);
+		} else {
+			redirect(referer + "#" + getPara("anchor"));
+		}
 	}
 
 	private String getIPAddress() {

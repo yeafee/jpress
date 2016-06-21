@@ -6,20 +6,24 @@ function doSubmit(){
 			dataType : "json", 
 			success : function(data) { 
 				if(data.errorCode == 0){
-					window.location.reload();
+					location.reload();
 				}else{
-					alert(data.message);
+					toastr.error(data.message,'操作失败');
 				}
 			},
 			error : function() {
-				alert("信息提交错误");
+				toastr.error("信息提交失败，可能是网络错误或者服务器没有响应。",'操作失败');
 			}
 	});
  }
  function doMenuDel(id){
  	$.get("${CPATH}/admin/template/menudel?ucode=${ucode}&id="+id, function(result){
 		if(result.errorCode > 0){
-			alert(result.message);
+			if(data.errorCode == 0){
+					location.reload();
+				}else{
+					toastr.error(data.message,'操作失败');
+				}
 		}else{
 			location.reload();
 		}
@@ -61,15 +65,24 @@ function doSubmit(){
 				<div class="form-group jp-input-item cf">
 					<div class="col-xs-5 jp-common-pad">
 						<label class="input-title">父节点</label> 
-						<select class="form-control input-sm" name="taxonomy.parent_id">
-							<option value="0">无</option>
-							<#list menus! as menu>
-							<option value="${menu.id}">${menu.layerString!}${menu.title!}</option>
+						<select class="form-control input-sm" name="content.parent_id">
+							<option value="">无</option>
+							<#list menus! as m>
+							<#if menu ??>
+								<#if  m.id?? && menu.parent_id?? && m.id == menu.parent_id	>
+								<option value="${m.id}" selected="selected">${m.layerString!}${m.title!}</option>
+								<#else>
+								<option value="${m.id}">${m.layerString!}${m.title!}</option>
+								</#if>
+							<#else>
+								<option value="${m.id}">${m.layerString!}${m.title!}</option>
+							</#if>
 							</#list>
 						</select>
 					</div>
 				</div>
-
+				
+				
 				<div class="form-group jp-input-item">
 					<button type="button" onclick="doSubmit()" class="btn btn-primary"> 保 存 </button>
 				</div>
@@ -110,7 +123,7 @@ function doSubmit(){
 						</thead>
 						<tbody>
 
-							<#list menus!  as bean>
+							<#list menulist!  as bean>
 							<tr class="jp-onmouse">
 								<td><label class="jp-common-pad"><input
 										class="jp-common-pad" name="chkItem" type="checkbox"></label>
@@ -120,7 +133,7 @@ function doSubmit(){
 										<p class="row-actions jp-common-pad">
 											<span class="approve"><a class="vim-a" href="?p=${p!}&c=${c!}&id=${bean.id}">编辑</a></span>
 											<span class="spam">| <a class="vim-s vim-destructive" href="javascript:doMenuDel('${bean.id}')">删除</a> </span> 
-											<span class="trash">| <a class="delete vim-d vim-destructive" href="#" target="_blank">查看</a></span>
+											<span class="trash">| <a class="delete vim-d vim-destructive" href="${bean.text!}" target="_blank">查看</a></span>
 										</p>
 									</div></td>
 								<td>${bean.text!}</td>

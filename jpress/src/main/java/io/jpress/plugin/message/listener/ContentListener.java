@@ -21,7 +21,6 @@ import io.jpress.plugin.message.MessageListener;
 
 public class ContentListener implements MessageListener {
 
-	static Object lock = new Object();
 
 	@Override
 	public void onMessage(Message message) {

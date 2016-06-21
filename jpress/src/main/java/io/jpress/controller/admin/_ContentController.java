@@ -38,7 +38,6 @@ import io.jpress.interceptor.ActionCacheClearInterceptor;
 import io.jpress.interceptor.UCodeInterceptor;
 import io.jpress.model.Content;
 import io.jpress.model.Mapping;
-import io.jpress.model.Option;
 import io.jpress.model.Taxonomy;
 import io.jpress.model.User;
 import io.jpress.plugin.message.MessageKit;
@@ -139,7 +138,8 @@ public class _ContentController extends JBaseCRUDController<Content> {
 				@Override
 				public boolean run() throws SQLException {
 					if (c.delete()) {
-						return Mapping.DAO.deleteByContentId(c.getId());
+						Mapping.DAO.deleteByContentId(c.getId());
+						return true;
 					}
 					return false;
 				}
@@ -174,8 +174,12 @@ public class _ContentController extends JBaseCRUDController<Content> {
 		setAttr("urlPreffix", ContentRouter.getContentRouterPreffix(module));
 		setAttr("urlSuffix", ContentRouter.getContentRouterSuffix(module));
 
-		String routerType = Option.findValue("router_content_type");
-		if (!StringUtils.isNotBlank(routerType) || ContentRouter.TYPE_DYNAMIC_ID.equals(routerType)) {
+		String routerType = ContentRouter.getRouterType();
+		if (!StringUtils.isNotBlank(routerType) 
+				|| ContentRouter.TYPE_DYNAMIC_ID.equals(routerType)
+				|| ContentRouter.TYPE_STATIC_MODULE_ID.equals(routerType) 
+				|| ContentRouter.TYPE_STATIC_DATE_ID.equals(routerType) 
+				|| ContentRouter.TYPE_STATIC_PREFIX_ID.equals(routerType)) {
 			setAttr("slugDisplay", " style=\"display: none\"");
 		}
 
@@ -259,6 +263,13 @@ public class _ContentController extends JBaseCRUDController<Content> {
 	public void save() {
 
 		final Content content = getContent();
+		
+		if(!StringUtils.isNotBlank(content.getTitle())){
+			renderAjaxResultForError("内容标题不能为空！");
+			return;
+		}
+		
+		boolean isAddAction = content.getId() == null ;
 
 		String slug = content.getSlug();
 		if (!StringUtils.isNotBlank(slug)) {
@@ -328,6 +339,12 @@ public class _ContentController extends JBaseCRUDController<Content> {
 			return;
 		}
 
+		if(isAddAction){
+			MessageKit.sendMessage(Actions.CONTENT_ADD, content);
+		}else{
+			MessageKit.sendMessage(Actions.CONTENT_UPDATE, content);
+		}
+		
 		AjaxResult ar = new AjaxResult();
 		ar.setErrorCode(0);
 		ar.setData(content.getId());

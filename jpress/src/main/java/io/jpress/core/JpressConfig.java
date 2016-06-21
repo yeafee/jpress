@@ -35,6 +35,7 @@ import com.jfinal.plugin.druid.DruidStatViewHandler;
 import com.jfinal.plugin.ehcache.EhCachePlugin;
 import com.jfinal.render.ViewType;
 
+import io.jpress.Consts;
 import io.jpress.core.cache.ActionCacheHandler;
 import io.jpress.core.db.DbDialect;
 import io.jpress.core.db.DbDialectFactory;
@@ -46,8 +47,10 @@ import io.jpress.interceptor.HookInterceptor;
 import io.jpress.interceptor.JI18nInterceptor;
 import io.jpress.plugin.message.MessagePlugin;
 import io.jpress.router.RouterMapping;
+import io.jpress.utils.StringUtils;
 
 public abstract class JpressConfig extends JFinalConfig {
+	
 
 	public void configConstant(Constants constants) {
 		PropKit.use("jpress.properties");
@@ -57,10 +60,10 @@ public abstract class JpressConfig extends JFinalConfig {
 		constants.setI18nDefaultBaseName("language");
 		constants.setErrorRenderFactory(new JErrorRenderFactory());
 		constants.setBaseUploadPath("attachment");
-		constants.setEncoding("utf-8");
-		constants.setMaxPostSize(1024*1024*200);
+		constants.setEncoding(Consts.CHARTSET_UTF8);
+		constants.setMaxPostSize(1024 * 1024 * 200);
 		constants.setMainRenderFactory(new JpressRenderFactory());
-
+		
 		// constants.setTokenCache(new JTokenCache());
 	}
 
@@ -70,7 +73,7 @@ public abstract class JpressConfig extends JFinalConfig {
 		if (controllerClassList != null) {
 			for (Class<?> clazz : controllerClassList) {
 				RouterMapping urlMapping = clazz.getAnnotation(RouterMapping.class);
-				if (null != urlMapping && null != urlMapping.url() && !"".equals(urlMapping.url())) {
+				if (null != urlMapping && StringUtils.isNotBlank(urlMapping.url())) {
 					if (StrKit.notBlank(urlMapping.viewPath())) {
 						routes.add(urlMapping.url(), (Class<? extends Controller>) clazz, urlMapping.viewPath());
 					} else {
@@ -117,7 +120,7 @@ public abstract class JpressConfig extends JFinalConfig {
 				if (tb == null)
 					continue;
 				String tname = tablePrefix + tb.tableName();
-				if (null != tb.primaryKey() && !"".equals(tb.primaryKey())) {
+				if (StringUtils.isNotBlank(tb.primaryKey())) {
 					arPlugin.addMapping(tname, tb.primaryKey(), (Class<? extends Model<?>>) clazz);
 				} else {
 					arPlugin.addMapping(tname, (Class<? extends Model<?>>) clazz);
@@ -128,7 +131,6 @@ public abstract class JpressConfig extends JFinalConfig {
 		}
 
 		arPlugin.setShowSql(JFinal.me().getConstants().getDevMode());
-
 		return arPlugin;
 	}
 
@@ -151,6 +153,8 @@ public abstract class JpressConfig extends JFinalConfig {
 		if (Jpress.isInstalled()) {
 			Jpress.loadFinished();
 		}
+		
+		Jpress.renderImmediately();
 		onJfinalStarted();
 	}
 

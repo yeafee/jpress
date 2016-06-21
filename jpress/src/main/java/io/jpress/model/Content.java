@@ -47,7 +47,7 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 	public static String STATUS_DELETE = "delete";
 	public static String STATUS_DRAFT = "draft";
 	public static String STATUS_NORMAL = "normal";
-	
+
 	public static String COMMENT_STATUS_OPEN = "open";
 	public static String COMMENT_STATUS_CLOSE = "close";
 
@@ -83,7 +83,7 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 	public Page<Content> doPaginateByModuleInNormal(int page, int pagesize, String module) {
 		return doPaginate(page, pagesize, module, STATUS_NORMAL, null, null, null);
 	}
-	
+
 	public Page<Content> doPaginateByModuleNotInDelete(int page, int pagesize, String module) {
 		String select = "select c.*,GROUP_CONCAT(t.id ,':',t.slug,':',t.title,':',t.type SEPARATOR ',') as taxonomys,u.username";
 
@@ -153,7 +153,7 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 
 	public List<Content> findListInNormal(int page, int pagesize, BigInteger taxonomyId, String orderBy) {
 		return findListInNormal(page, pagesize, orderBy, null, new BigInteger[] { taxonomyId }, null, null, null, null,
-				null, null, null, null,null);
+				null, null, null, null, null);
 	}
 
 	/**
@@ -173,7 +173,7 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 	 */
 	public List<Content> findListInNormal(int page, int pagesize, String orderBy, String keyword, BigInteger[] typeIds,
 			String[] typeSlugs, String[] modules, String[] styles, String[] flags, String[] slugs, BigInteger[] userIds,
-			BigInteger[] parentIds, String[] tags,Boolean hasThumbnail) {
+			BigInteger[] parentIds, String[] tags, Boolean hasThumbnail) {
 
 		StringBuilder sqlBuilder = getBaseSelectSql();
 		sqlBuilder.append(" where c.status = 'normal' ");
@@ -200,11 +200,11 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 			sqlBuilder.append(" c.title like ?");
 			params.add("'%" + keyword + "%'");
 		}
-		
-		if( null != hasThumbnail){
-			if(hasThumbnail){
+
+		if (null != hasThumbnail) {
+			if (hasThumbnail) {
 				sqlBuilder.append(" and c.thumbnail is not null ");
-			}else{
+			} else {
 				sqlBuilder.append(" and c.thumbnail is null ");
 			}
 		}
@@ -237,12 +237,20 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 		return doFindFirst("module = ? and title = ? order by id desc", module, title);
 	}
 
+	public Content findFirstByModuleAndObjectId(String module, BigInteger objectId) {
+		return doFindFirst("module = ? and object_id = ? order by id desc", module, objectId);
+	}
+
 	public List<Content> searchByModuleAndTitle(String module, String title, int limit) {
 		return doFind("module = ? and title like ? order by id desc limit ?", module, "%" + title + "%", limit);
 	}
 
 	public List<Content> findByModule(String module, String orderby) {
 		return doFind("module = ? order by ?", module, orderby);
+	}
+	
+	public List<Content> findByModule(String module,BigInteger parentId, String orderby) {
+		return doFind("module = ? AND parent_id = ? order by ?", module, parentId,orderby);
 	}
 
 	public Content findBySlug(final String slug) {
@@ -280,10 +288,6 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 		if (getSlug() != null) {
 			removeCache(getSlug());
 		}
-
-		putCache(getId(), this);
-		putCache(getSlug(), this);
-
 		return super.update();
 	}
 
@@ -291,12 +295,10 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 	public boolean saveOrUpdate() {
 		if (getId() != null) {
 			removeCache(getId());
-			putCache(getId(), this);
 		}
 
 		if (getSlug() != null) {
 			removeCache(getSlug());
-			putCache(getSlug(), this);
 		}
 
 		return super.saveOrUpdate();
@@ -309,12 +311,16 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 	public long findCountInNormalByModule(String module) {
 		return doFindCount("module = ? AND status <> ?", module, STATUS_DELETE);
 	}
-	
-	public long findCountInNormalByParentId(BigInteger id ,String module) {
-		if(id == null){
-			return doFindCount("parent_id is null AND module = ? AND status <> ?",  module, STATUS_DELETE);
+
+	public long findCountInNormalByModuleAndUserId(String module, BigInteger userId) {
+		return doFindCount("module = ? AND status <> ? and user_id = ? ", module, STATUS_DELETE, userId);
+	}
+
+	public long findCountInNormalByParentId(BigInteger id, String module) {
+		if (id == null) {
+			return doFindCount("parent_id is null AND module = ? AND status <> ?", module, STATUS_DELETE);
 		}
-		return doFindCount("parent_id = ? AND module = ? AND status <> ?", id , module, STATUS_DELETE);
+		return doFindCount("parent_id = ? AND module = ? AND status <> ?", id, module, STATUS_DELETE);
 	}
 
 	public User findUser() {
@@ -360,7 +366,7 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 		long count = Comment.DAO.findCountByContentIdInNormal(getId());
 		if (count > 0) {
 			setCommentCount(count);
-			this.update();
+			return this.update();
 		}
 		return false;
 	}
@@ -428,7 +434,9 @@ public class Content extends BaseContent<Content> implements ISortModel<Content>
 				// propertes[3] == type
 				// by method doPaginateByModuleAndStatus
 				if (propertes != null && propertes.length == 4) {
-					if (type.equals(propertes[3])) {
+					if (type == null) {
+						retBuilder.append(propertes[2]).append(",");
+					} else if (type.equals(propertes[3])) {
 						retBuilder.append(propertes[2]).append(",");
 					}
 				}
